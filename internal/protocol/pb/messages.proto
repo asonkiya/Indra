@@ -1,0 +1,39 @@
+syntax = "proto3";
+package indra.v1;
+option go_package = "github.com/aryaman/indra/internal/protocol/pb";
+
+enum EnvelopeType {
+  DIRECT  = 0;
+  GROUP   = 1;
+  ACK     = 2;
+  OFFLINE = 3;
+}
+
+// Envelope is the wire format for all messages (stream and DHT).
+message Envelope {
+  string       message_id    = 1;
+  string       sender_id     = 2; // peer.ID string
+  string       recipient_id  = 3; // peer.ID string; empty for group messages
+  string       group_id      = 4;
+  bytes        ciphertext    = 5; // NaCl box ciphertext
+  bytes        nonce         = 6; // 24 bytes
+  bytes        sender_pubkey = 7; // Curve25519 public key of sender
+  int64        sent_at_unix  = 8;
+  EnvelopeType type          = 9;
+  bytes        signature     = 10; // Ed25519 sig over (message_id || ciphertext || nonce)
+  int64        seq           = 11; // sequence number for mailbox ordering
+}
+
+// GroupMemberList is stored in the DHT under /indra/group/<groupID>/members.
+message GroupMemberList {
+  string          group_id    = 1;
+  string          group_name  = 2;
+  repeated string member_ids  = 3;
+  int64           updated_at  = 4;
+}
+
+// Ack is sent back on the same stream after receiving a message.
+message Ack {
+  string message_id = 1;
+  bool   ok         = 2;
+}

@@ -1,0 +1,76 @@
+services:
+  # Bootstrap node — stable peer all others connect to first.
+  # Run this on a VPS for internet-wide connectivity; locally it just
+  # seeds the DHT so the other nodes can find each other.
+  bootstrap:
+    build: .
+    container_name: indra-bootstrap
+    restart: unless-stopped
+    ports:
+      - "4001:4001/tcp"
+      - "4001:4001/udp"
+    volumes:
+      - bootstrap-data:/data
+    command:
+      - --data=/data
+      - --listen=/ip4/0.0.0.0/tcp/4001,/ip4/0.0.0.0/udp/4001/quic-v1
+    networks:
+      - indra
+
+  # Node A — first test peer.
+  node-a:
+    build: .
+    container_name: indra-node-a
+    restart: unless-stopped
+    volumes:
+      - node-a-data:/data
+    command:
+      - --data=/data
+      - --listen=/ip4/0.0.0.0/tcp/4001,/ip4/0.0.0.0/udp/4001/quic-v1
+      - --bootstrap=/dns4/bootstrap/tcp/4001/p2p/${BOOTSTRAP_PEER_ID}
+    networks:
+      - indra
+    depends_on:
+      - bootstrap
+
+  # Node B — second test peer.
+  node-b:
+    build: .
+    container_name: indra-node-b
+    restart: unless-stopped
+    volumes:
+      - node-b-data:/data
+    command:
+      - --data=/data
+      - --listen=/ip4/0.0.0.0/tcp/4001,/ip4/0.0.0.0/udp/4001/quic-v1
+      - --bootstrap=/dns4/bootstrap/tcp/4001/p2p/${BOOTSTRAP_PEER_ID}
+    networks:
+      - indra
+    depends_on:
+      - bootstrap
+
+  # Push notification relay — sends silent pushes to wake offline devices.
+  # Stores zero message content; only maps peerID → push token.
+  relay:
+    build: ./relay
+    container_name: indra-relay
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - APNS_P8_PATH=${APNS_P8_PATH:-}
+      - APNS_KEY_ID=${APNS_KEY_ID:-}
+      - APNS_TEAM_ID=${APNS_TEAM_ID:-}
+      - APNS_TOPIC=${APNS_TOPIC:-}
+      - APNS_PROD=${APNS_PROD:-false}
+    networks:
+      - indra
+
+volumes:
+  bootstrap-data:
+  node-a-data:
+  node-b-data:
+
+networks:
+  indra:
+    driver: bridge

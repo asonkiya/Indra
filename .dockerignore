@@ -1,0 +1,13 @@
+bin/
+mobile/build/
+app/
+relay/
+shims/
+*.md
+.git/
+.env
+.env.example
+.envrc
+.mise.toml
+.claude/
+docker-compose.yml
